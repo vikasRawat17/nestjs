@@ -33,4 +33,23 @@ export class UsersService {
       },
     });
   }
+  findById(id: string) {
+    return this.prisma.user.findUnique({ where: { id } });
+  }
+  findByResetToken(resetToken: string) {
+    return this.prisma.user.findUnique({ where: { resetToken } });
+  }
+  setResetToken(userId: string, resetToken: string, resetTokenExpiry: Date) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { resetToken, resetTokenExpiry },
+    });
+  }
+
+  resetPassword(userId: string, password: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { password, resetToken: null, resetTokenExpiry: null },
+    });
+  }
 }

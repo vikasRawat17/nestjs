@@ -24,4 +24,15 @@ export class SessionsService {
   deleteAllForUser(userId: string) {
     return this.prisma.session.deleteMany({ where: { userId } });
   }
+  rotateSession(
+    id: string,
+    tokenHash: string,
+    expiresAt: Date,
+    userAgent?: string,
+  ) {
+    return this.prisma.session.update({
+      where: { id },
+      data: { tokenHash, expiresAt, userAgent },
+    });
+  }
 }

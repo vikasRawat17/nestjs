@@ -17,6 +17,8 @@ model User {
   emailVerified           Boolean   @default(false)
   verificationToken       String?   @unique
   verificationTokenExpiry DateTime?
+  resetToken              String?   @unique
+  resetTokenExpiry        DateTime?
   onBoarding              Boolean   @default(false)
   createdAt               DateTime  @default(now()) @map("create_at")
   sessions                Session[]
