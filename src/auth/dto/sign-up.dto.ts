@@ -8,7 +8,7 @@ export class SignUpDto {
   name: string;
 
   @IsEmail()
-  @Transform(({ value }) => value?.toLowerCase().trim())
+  @Transform(({ value }: { value: string }) => value?.toLowerCase().trim())
   email: string;
 
   @IsString()

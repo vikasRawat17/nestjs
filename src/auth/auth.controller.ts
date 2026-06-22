@@ -7,6 +7,7 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignUpDto } from './dto/sign-up.dto';
@@ -14,14 +15,26 @@ import type { Response, Request } from 'express';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { CurrentUser } from './current-user.decorator';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import {
+  clearAuthCookies,
+  setAuthCookies,
+} from 'src/utils/helpers/auth/auth.helpers';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  me(@CurrentUser() user: { id: string; email: string }) {
+    return { user };
+  }
+
   @Post('signup')
   signup(@Body() dto: SignUpDto) {
-    return this.authService.singup(dto);
+    return this.authService.signup(dto);
   }
   @Get('verify-email')
   async verifyEmail(
@@ -38,11 +51,7 @@ export class AuthController {
     if (!result.success)
       return res.redirect(`${frontend}/verify?status=${result.reason}`);
 
-    this.authService.setAuthCookies(
-      res,
-      result.accessToken,
-      result.refreshToken,
-    );
+    setAuthCookies(res, result.accessToken, result.refreshToken);
     return res.redirect(`${frontend}/onboarding`);
   }
   @Post('login')
@@ -57,7 +66,7 @@ export class AuthController {
       userAgent,
     );
 
-    this.authService.setAuthCookies(res, accessToken, refreshToken);
+    setAuthCookies(res, accessToken, refreshToken);
     return { user };
   }
   @Post('refresh')
@@ -72,7 +81,7 @@ export class AuthController {
       rawRefreshToken,
       userAgent,
     );
-    this.authService.setAuthCookies(res, accessToken, refreshToken);
+    setAuthCookies(res, accessToken, refreshToken);
     return { success: true };
   }
   @Post('forgot-password')
@@ -80,7 +89,23 @@ export class AuthController {
     return this.authService.forgotPassword(dto.email);
   }
   @Post('reset-password')
-  resetPasswprd(@Body() dto: ResetPasswordDto) {
+  resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.password);
+  }
+  @Post('logout')
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    await this.authService.logout(req.cookies?.refresh_token as string);
+    clearAuthCookies(res);
+    return { success: true };
+  }
+  @UseGuards(JwtAuthGuard)
+  @Post('logout-all')
+  async logoutAll(
+    @CurrentUser() user: { id: string; email: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.logoutAll(user.id);
+    clearAuthCookies(res);
+    return { success: true };
   }
 }
