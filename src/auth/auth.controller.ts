@@ -21,6 +21,8 @@ import {
   clearAuthCookies,
   setAuthCookies,
 } from 'src/utils/helpers/auth/auth.helpers';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
@@ -54,6 +56,7 @@ export class AuthController {
     setAuthCookies(res, result.accessToken, result.refreshToken);
     return res.redirect(`${frontend}/onboarding`);
   }
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('login')
   async login(
     @Body() dto: LoginDto,
@@ -84,6 +87,7 @@ export class AuthController {
     setAuthCookies(res, accessToken, refreshToken);
     return { success: true };
   }
+  @Throttle({ default: { ttl: 600000, limit: 3 } })
   @Post('forgot-password')
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.email);
@@ -107,5 +111,10 @@ export class AuthController {
     await this.authService.logoutAll(user.id);
     clearAuthCookies(res);
     return { success: true };
+  }
+  @Throttle({ default: { ttl: 600000, limit: 3 } })
+  @Post('resend-verification')
+  resendVerification(@Body() dto: ResendVerificationDto) {
+    return this.authService.resendVerification(dto.email);
   }
 }

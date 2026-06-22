@@ -1,8 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class SessionsService {
+  private readonly logger = new Logger(SessionsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   createSession(data: {
@@ -34,5 +37,17 @@ export class SessionsService {
       where: { id },
       data: { tokenHash, expiresAt, userAgent },
     });
+  }
+
+  deleteExpired() {
+    return this.prisma.session.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async cleanupExpiredSessions() {
+    const { count } = await this.deleteExpired();
+    if (count > 0) this.logger.log(`Deleted ${count} expired sessions`);
   }
 }

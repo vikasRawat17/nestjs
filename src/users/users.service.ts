@@ -52,4 +52,15 @@ export class UsersService {
       data: { password, resetToken: null, resetTokenExpiry: null },
     });
   }
+
+  setVerificationToken(
+    userId: string,
+    verificationToken: string,
+    verificationTokenExpiry: Date,
+  ) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { verificationToken, verificationTokenExpiry },
+    });
+  }
 }

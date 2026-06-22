@@ -22,6 +22,7 @@ import {
   generateRawToken,
   hashToken,
 } from 'src/utils/helpers/auth/auth.helpers';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class AuthService {
@@ -30,6 +31,7 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly sessionService: SessionsService,
     private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async signup(dto: SignUpDto) {
@@ -173,8 +175,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired reset link');
     }
     const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
-    await this.userService.resetPassword(user.id, hashedPassword);
-    await this.sessionService.deleteAllForUser(user.id);
+    await this.prisma.$transaction([
+      this.userService.resetPassword(user.id, hashedPassword),
+      this.sessionService.deleteAllForUser(user.id),
+    ]);
     return { message: 'Password updated. Please log in again.' };
   }
 
@@ -188,5 +192,19 @@ export class AuthService {
 
   async logoutAll(userId: string) {
     await this.sessionService.deleteAllForUser(userId);
+  }
+  async resendVerification(email: string) {
+    const user = await this.userService.findByEmail(email);
+    if (user && !user.emailVerified) {
+      const rawToken = generateRawToken();
+      const tokenHash = hashToken(rawToken);
+      const expiry = new Date(Date.now() + VERIFICATION_TTL_MS);
+
+      await this.userService.setVerificationToken(user.id, tokenHash, expiry);
+      await this.mailService.sendVerificationEmail(user.email, rawToken);
+    }
+    return {
+      message: 'If your account needs verification,a new linkk has been sent',
+    };
   }
 }
